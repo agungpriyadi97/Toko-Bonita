@@ -622,32 +622,6 @@ export default function CashierPOSPage() {
                         {formatCurrency(calculateItemFinal(item))}
                       </p>
                     </div>
-
-                    {/* Item Discount */}
-                    <div className="flex gap-2 mt-2">
-                      <Select
-                        value={item.discountType}
-                        onValueChange={(v) => updateItemDiscount(item.product.id, v as DiscountType, item.discountValue)}
-                      >
-                        <SelectTrigger className="h-7 text-xs w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Tanpa</SelectItem>
-                          <SelectItem value="percent">%</SelectItem>
-                          <SelectItem value="amount">Rp</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {item.discountType !== 'none' && (
-                        <Input
-                          type="number"
-                          className="h-7 w-20 text-xs"
-                          value={item.discountValue}
-                          onChange={(e) => updateItemDiscount(item.product.id, item.discountType, Number(e.target.value))}
-                          placeholder="Nilai"
-                        />
-                      )}
-                    </div>
                   </div>
                 ))}
               </div>
@@ -658,23 +632,25 @@ export default function CashierPOSPage() {
 
           {/* Transaction Discount & Totals */}
           <div className="p-4 space-y-3">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <Label className="text-sm whitespace-nowrap">Diskon Transaksi</Label>
               <Select
                 value={transactionDiscountType}
                 onValueChange={(v) => setTransactionDiscountType(v as DiscountType)}
               >
-                <SelectTrigger className="w-24">
+                <SelectTrigger className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Tanpa Diskon</SelectItem>
-                  <SelectItem value="percent">Diskon %</SelectItem>
-                  <SelectItem value="amount">Diskon Rp</SelectItem>
+                  <SelectItem value="none">Tanpa</SelectItem>
+                  <SelectItem value="percent">Persen %</SelectItem>
+                  <SelectItem value="amount">Nominal Rp</SelectItem>
                 </SelectContent>
               </Select>
               {transactionDiscountType !== 'none' && (
                 <Input
                   type="number"
+                  className="flex-1"
                   value={transactionDiscountValue}
                   onChange={(e) => setTransactionDiscountValue(Number(e.target.value))}
                   placeholder="Nilai diskon"
