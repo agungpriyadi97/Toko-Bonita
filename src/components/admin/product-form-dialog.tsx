@@ -1,0 +1,277 @@
+'use client'
+
+import { useState, useEffect, useSyncExternalStore } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
+import { getSupabaseClient } from '@/lib/supabase-client'
+import type { Tables } from '@/types/database.types'
+
+interface ProductFormDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  product?: Tables<'products'> | null
+  onSuccess: () => void
+}
+
+const emptySubscribe = () => () => {}
+const getSnapshot = () => true
+const getServerSnapshot = () => false
+
+export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: ProductFormDialogProps) {
+  const [categories, setCategories] = useState<Tables<'categories'>[]>([])
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    category_id: '',
+    barcode: '',
+    sku: '',
+    price: '',
+    description: '',
+    is_active: true
+  })
+  const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot)
+  const supabase = getSupabaseClient()
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name')
+      setCategories(data || [])
+    }
+    fetchCategories()
+  }, [supabase])
+
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        name: product.name,
+        category_id: product.category_id || '',
+        barcode: product.barcode || '',
+        sku: product.sku || '',
+        price: product.price.toString(),
+        description: product.description || '',
+        is_active: product.is_active
+      })
+    } else {
+      setFormData({
+        name: '',
+        category_id: '',
+        barcode: '',
+        sku: '',
+        price: '',
+        description: '',
+        is_active: true
+      })
+    }
+  }, [product])
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!formData.name || !formData.price) {
+      toast.error('Nama dan harga wajib diisi')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const slug = generateSlug(formData.name)
+      const price = parseFloat(formData.price) || 0
+
+      if (product) {
+        // Update existing product
+        const { error } = await supabase
+          .from('products')
+          .update({
+            name: formData.name,
+            slug,
+            category_id: formData.category_id || null,
+            barcode: formData.barcode || null,
+            sku: formData.sku || null,
+            price,
+            description: formData.description || null,
+            is_active: formData.is_active,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', product.id)
+
+        if (error) throw error
+        toast.success('Produk berhasil diperbarui')
+      } else {
+        // Create new product
+        const { error } = await supabase
+          .from('products')
+          .insert({
+            name: formData.name,
+            slug,
+            category_id: formData.category_id || null,
+            barcode: formData.barcode || null,
+            sku: formData.sku || null,
+            price,
+            description: formData.description || null,
+            is_active: formData.is_active,
+            in_stock: true
+          })
+
+        if (error) throw error
+        toast.success('Produk berhasil ditambahkan')
+      }
+
+      onSuccess()
+      onOpenChange(false)
+    } catch (error) {
+      console.error('Error saving product:', error)
+      toast.error('Gagal menyimpan produk')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!mounted) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {product ? 'Edit Produk' : 'Tambah Produk Baru'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Nama Produk *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Masukkan nama produk"
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="category">Kategori</Label>
+            <Select
+              value={formData.category_id}
+              onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="barcode">Barcode</Label>
+              <Input
+                id="barcode"
+                value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                placeholder="899xxxxx"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sku">SKU</Label>
+              <Input
+                id="sku"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                placeholder="PRD-001"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="price">Harga (Rp) *</Label>
+            <Input
+              id="price"
+              type="number"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              placeholder="50000"
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Deskripsi</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Deskripsi produk"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              id="is_active"
+              checked={formData.is_active}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+            />
+            <Label htmlFor="is_active">Produk aktif</Label>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              className="bg-gradient-to-r from-pink-500 to-purple-600"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {product ? 'Simpan Perubahan' : 'Tambah Produk'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
