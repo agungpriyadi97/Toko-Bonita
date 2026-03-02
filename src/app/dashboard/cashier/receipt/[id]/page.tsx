@@ -28,11 +28,13 @@ interface Cashier {
 
 interface Transaction {
   id: string
+  transaction_number: string
   created_at: string
   subtotal_amount: number
   discount_amount: number
   final_amount: number
   payment_method: string
+  cash_received: number
   change_amount: number
   branch: Branch | null
   cashier: Cashier | null
@@ -52,11 +54,13 @@ export default async function ReceiptPage({
     .from('transactions')
     .select(`
       id,
+      transaction_number,
       created_at,
       subtotal_amount,
       discount_amount,
       final_amount,
       payment_method,
+      cash_received,
       change_amount,
       cashier:profiles!transactions_cashier_id_fkey(full_name),
       branch:branches(name, address),

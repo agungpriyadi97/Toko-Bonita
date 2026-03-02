@@ -120,23 +120,30 @@
   }
 }
 
-/* Receipt Print Styles - 58mm thermal printer */
+/* Receipt Print Styles - 80mm thermal printer */
 @media print {
   @page {
-    size: 58mm auto;
+    size: 80mm auto;
     margin: 0;
   }
-  
-  /* Reset body untuk print */
-  body {
-    width: 58mm !important;
+
+  /* Reset untuk print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    width: 80mm !important;
+    min-width: 80mm !important;
+    max-width: 80mm !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 10px !important;
     background: white !important;
+    font-size: 11px !important;
   }
-  
-  /* Sembunyikan semua elemen dashboard */
+
+  /* Sembunyikan dashboard layout */
   .lg\:pl-64,
   aside,
   nav,
@@ -147,26 +154,33 @@
   [data-sidebar],
   header[class*="Header"],
   header[class*="header"],
-  .no-print {
+  .no-print,
+  .print-controls {
     display: none !important;
   }
-  
-  /* Tampilkan hanya container receipt */
+
+  /* Screen view untuk print */
+  .screen-view {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    min-height: auto !important;
+  }
+
+  /* Receipt styling */
+  .receipt-preview,
   .receipt-container {
-    display: block !important;
-    width: 58mm !important;
-    padding: 2mm !important;
+    width: 80mm !important;
+    min-width: 80mm !important;
+    max-width: 80mm !important;
+    padding: 3mm !important;
     margin: 0 !important;
     background: white !important;
     box-shadow: none !important;
+    font-size: 11px !important;
   }
-  
-  /* Sembunyikan semua selain receipt */
-  body > *:not(.receipt-page-wrapper) {
-    display: none !important;
-  }
-  
-  /* Pastikan main content tidak punya padding */
+
+  /* Main content */
   main {
     padding: 0 !important;
     margin: 0 !important;
