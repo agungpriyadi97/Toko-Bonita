@@ -64,167 +64,162 @@ export default function ReceiptView({ transaction }: ReceiptViewProps) {
     })
   }
 
+  const handlePrint = () => {
+    window.print()
+  }
+
   return (
-    <>
-      {/* Screen View - dengan dashboard layout */}
-      <div className="screen-view min-h-screen bg-gray-100 p-4">
-        {/* Controls - Hidden on print */}
-        <div className="print-controls mb-4 flex items-center gap-4">
-          <Link href="/dashboard/cashier/transactions">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Kembali
-            </Button>
-          </Link>
-          <Button onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" />
-            Cetak Struk
+    <div className="receipt-page">
+      {/* Tombol Kontrol - Tersembunyi saat print */}
+      <div className="print-buttons mb-4 flex items-center gap-4">
+        <Link href="/dashboard/cashier/transactions">
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Kembali
           </Button>
+        </Link>
+        <Button onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" />
+          Cetak Struk
+        </Button>
+      </div>
+
+      {/* Struk */}
+      <div className="receipt">
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{transaction.branch?.name || 'Toko Bonita'}</div>
+          <div style={{ fontSize: '10px' }}>{transaction.branch?.address || 'Kecantikan & Perlengkapan Bayi'}</div>
         </div>
 
-        {/* Receipt Preview */}
-        <div className="receipt-preview bg-white mx-auto p-4 font-mono text-xs shadow-lg" style={{ width: '80mm', fontSize: '11px' }}>
-          {/* Header */}
-          <div className="text-center mb-2">
-            <div className="font-bold text-sm">{transaction.branch?.name || 'Toko Bonita'}</div>
-            <div className="text-[10px]">{transaction.branch?.address || 'Kecantikan & Perlengkapan Bayi'}</div>
-          </div>
+        <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }}></div>
 
-          <div className="border-t border-dashed border-gray-400 my-2"></div>
+        {/* Info Transaksi */}
+        <div style={{ fontSize: '10px', marginBottom: '8px' }}>
+          <div>No: {transaction.transaction_number || transaction.id.slice(0, 12)}</div>
+          <div>Tgl: {formatDate(transaction.created_at)}</div>
+          <div>Kasir: {transaction.cashier?.full_name || '-'}</div>
+        </div>
 
-          {/* Transaction Info */}
-          <div className="mb-2 text-[10px]">
-            <div>No: {transaction.transaction_number || transaction.id.slice(0, 12)}</div>
-            <div>Tgl: {formatDate(transaction.created_at)}</div>
-            <div>Kasir: {transaction.cashier?.full_name || '-'}</div>
-          </div>
+        <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }}></div>
 
-          <div className="border-t border-dashed border-gray-400 my-2"></div>
-
-          {/* Items */}
-          <div className="mb-2">
-            {transaction.items?.map((item, index) => (
-              <div key={index} className="mb-1">
-                <div className="font-medium">{item.product_name || 'Item'}</div>
-                <div className="flex justify-between">
-                  <span>{item.qty} x {formatCurrency(item.unit_price)}</span>
-                  <span>{formatCurrency(item.subtotal)}</span>
-                </div>
+        {/* Items */}
+        <div style={{ marginBottom: '8px' }}>
+          {transaction.items?.map((item, index) => (
+            <div key={index} style={{ marginBottom: '4px' }}>
+              <div style={{ fontWeight: '500' }}>{item.product_name || 'Item'}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+                <span>{item.qty} x {formatCurrency(item.unit_price)}</span>
+                <span>{formatCurrency(item.subtotal)}</span>
               </div>
-            ))}
-          </div>
-
-          <div className="border-t border-dashed border-gray-400 my-2"></div>
-
-          {/* Totals */}
-          <div className="text-[11px]">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>{formatCurrency(transaction.subtotal_amount)}</span>
             </div>
-            {transaction.discount_amount > 0 && (
-              <div className="flex justify-between">
-                <span>Diskon</span>
-                <span>-{formatCurrency(transaction.discount_amount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-sm pt-1 border-t border-gray-300 mt-1">
-              <span>TOTAL</span>
-              <span>{formatCurrency(transaction.final_amount)}</span>
+          ))}
+        </div>
+
+        <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }}></div>
+
+        {/* Totals */}
+        <div style={{ fontSize: '11px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Subtotal</span>
+            <span>{formatCurrency(transaction.subtotal_amount)}</span>
+          </div>
+          {transaction.discount_amount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Diskon</span>
+              <span>-{formatCurrency(transaction.discount_amount)}</span>
             </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', borderTop: '1px solid #ccc', marginTop: '4px', paddingTop: '4px' }}>
+            <span>TOTAL</span>
+            <span>{formatCurrency(transaction.final_amount)}</span>
           </div>
+        </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2"></div>
+        <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }}></div>
 
-          {/* Payment */}
-          <div className="text-[11px]">
-            <div className="flex justify-between">
-              <span>Bayar ({transaction.payment_method === 'cash' ? 'Tunai' : transaction.payment_method})</span>
-              <span>{formatCurrency(transaction.cash_received || transaction.final_amount)}</span>
+        {/* Pembayaran */}
+        <div style={{ fontSize: '11px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Bayar ({transaction.payment_method === 'cash' ? 'Tunai' : transaction.payment_method})</span>
+            <span>{formatCurrency(transaction.cash_received || transaction.final_amount)}</span>
+          </div>
+          {transaction.change_amount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Kembalian</span>
+              <span>{formatCurrency(transaction.change_amount)}</span>
             </div>
-            {transaction.change_amount > 0 && (
-              <div className="flex justify-between">
-                <span>Kembalian</span>
-                <span>{formatCurrency(transaction.change_amount)}</span>
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="border-t border-dashed border-gray-400 my-2"></div>
+        <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }}></div>
 
-          {/* Footer */}
-          <div className="text-center text-[10px]">
-            <div>================================</div>
-            <div className="mt-1">Terima kasih telah berbelanja</div>
-            <div>di Toko Bonita</div>
-          </div>
+        {/* Footer */}
+        <div style={{ textAlign: 'center', fontSize: '10px' }}>
+          <div>================================</div>
+          <div style={{ marginTop: '4px' }}>Terima kasih telah berbelanja</div>
+          <div>di Toko Bonita</div>
         </div>
       </div>
 
       {/* Print Styles */}
       <style jsx global>{`
+        .receipt-page {
+          min-height: 100vh;
+          background: #f3f4f6;
+          padding: 16px;
+        }
+
+        .receipt {
+          background: white;
+          width: 80mm;
+          max-width: 100%;
+          margin: 0 auto;
+          padding: 8px;
+          font-family: monospace;
+          font-size: 11px;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
         @media print {
-          /* Reset semua */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+          /* Hide everything first */
+          body * {
+            visibility: hidden;
           }
-          
-          html, body {
-            width: 80mm !important;
-            min-width: 80mm !important;
-            max-width: 80mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            font-size: 11px !important;
+
+          /* Show only receipt page and its children */
+          .receipt-page,
+          .receipt-page * {
+            visibility: visible;
           }
-          
-          /* Sembunyikan SEMUA elemen dashboard */
-          body > div:first-child:not(.screen-view),
-          .lg\\:pl-64,
-          aside,
-          nav,
-          header,
-          .sidebar,
-          [class*="Sidebar"],
-          [class*="Header"],
-          [class*="sidebar"],
-          [class*="header"],
-          [data-sidebar],
-          header nav,
-          .sticky,
-          .print-controls {
+
+          /* Position receipt at top-left */
+          .receipt-page {
+            position: absolute;
+            left: 0;
+            top: 0;
+            padding: 0;
+            margin: 0;
+            background: white;
+          }
+
+          .print-buttons {
             display: none !important;
           }
-          
-          /* Tampilkan hanya screen-view dan receipt */
-          .screen-view {
-            display: block !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-            min-height: auto !important;
+
+          .receipt {
+            box-shadow: none;
+            margin: 0;
+            padding: 4mm;
+            width: 80mm;
           }
-          
-          .receipt-preview {
-            width: 80mm !important;
-            min-width: 80mm !important;
-            max-width: 80mm !important;
-            padding: 3mm !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            font-size: 11px !important;
-            background: white !important;
-          }
-          
-          /* Page setup */
+
           @page {
             size: 80mm auto;
             margin: 0;
           }
         }
       `}</style>
-    </>
+    </div>
   )
 }
