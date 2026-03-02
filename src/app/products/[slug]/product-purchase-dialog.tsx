@@ -24,7 +24,8 @@ import {
   CreditCard,
   QrCode,
   Wallet,
-  Building2
+  Building2,
+  Truck
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,7 @@ interface ProductPurchaseDialogProps {
 }
 
 type PaymentMethod = 'cash' | 'transfer' | 'qris' | 'debit'
+type ShippingMethod = 'pickup' | 'jne' | 'jnt' | 'sicepat' | 'pos' | 'gosend' | 'grab'
 type Step = 'order' | 'payment' | 'success'
 
 const paymentMethods = [
@@ -52,6 +54,16 @@ const paymentMethods = [
   { id: 'qris' as PaymentMethod, name: 'QRIS', icon: QrCode, description: 'Scan QR untuk bayar' },
   { id: 'cash' as PaymentMethod, name: 'Tunai', icon: Wallet, description: 'Bayar di toko' },
   { id: 'debit' as PaymentMethod, name: 'Kartu Debit', icon: CreditCard, description: 'Bayar dengan kartu' },
+]
+
+const shippingMethods = [
+  { id: 'pickup' as ShippingMethod, name: 'Ambil di Toko', icon: Package, description: 'Gratis', cost: 0 },
+  { id: 'jne' as ShippingMethod, name: 'JNE', icon: Truck, description: 'Reguler/YES', cost: 15000 },
+  { id: 'jnt' as ShippingMethod, name: 'J&T Express', icon: Truck, description: 'Reguler/EZ', cost: 12000 },
+  { id: 'sicepat' as ShippingMethod, name: 'SiCepat', icon: Truck, description: 'REG/BEST', cost: 13000 },
+  { id: 'pos' as ShippingMethod, name: 'POS Indonesia', icon: Truck, description: 'Paket Pos', cost: 10000 },
+  { id: 'gosend' as ShippingMethod, name: 'GoSend', icon: Truck, description: 'Same Day/Instant', cost: 25000 },
+  { id: 'grab' as ShippingMethod, name: 'Grab Express', icon: Truck, description: 'Same Day/Instant', cost: 25000 },
 ]
 
 export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
@@ -68,6 +80,7 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('transfer')
   const [paymentProof, setPaymentProof] = useState<File | null>(null)
   const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null)
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('pickup')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const formatPrice = (price: number) => {
@@ -78,7 +91,9 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
     }).format(price)
   }
 
-  const totalPrice = product.price * quantity
+  const selectedShipping = shippingMethods.find(s => s.id === shippingMethod) || shippingMethods[0]
+  const shippingCost = selectedShipping.cost
+  const totalPrice = product.price * quantity + shippingCost
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -123,6 +138,10 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
       toast.error('Mohon isi nomor telepon')
       return
     }
+    if (shippingMethod !== 'pickup' && !customerAddress.trim()) {
+      toast.error('Mohon isi alamat pengiriman')
+      return
+    }
 
     setLoading(true)
     
@@ -136,6 +155,8 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
           customer_address: customerAddress,
           notes,
           payment_method: paymentMethod,
+          shipping_method: shippingMethod,
+          shipping_cost: shippingCost,
           items: [{
             product_id: product.id,
             product_name: product.name,
@@ -271,6 +292,7 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
     setPaymentMethod('transfer')
     setPaymentProof(null)
     setPaymentProofPreview(null)
+    setShippingMethod('pickup')
   }
 
   return (
@@ -543,15 +565,52 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
             </div>
 
             <div>
-              <Label htmlFor="address">Alamat (Opsional)</Label>
+              <Label htmlFor="address">Alamat {shippingMethod !== 'pickup' && '*'}</Label>
               <Textarea
                 id="address"
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
-                placeholder="Alamat pengiriman"
+                placeholder={shippingMethod === 'pickup' ? 'Alamat (opsional untuk ambil di toko)' : 'Alamat lengkap pengiriman'}
                 className="mt-1"
                 rows={2}
               />
+            </div>
+
+            {/* Shipping Method */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Metode Pengiriman</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {shippingMethods.map((method) => {
+                  const Icon = method.icon
+                  const isSelected = shippingMethod === method.id
+                  return (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => setShippingMethod(method.id)}
+                      className={cn(
+                        "p-3 rounded-lg border-2 text-left transition-all",
+                        isSelected 
+                          ? "border-pink-500 bg-pink-50" 
+                          : "border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className={cn("h-5 w-5 flex-shrink-0", isSelected ? "text-pink-500" : "text-gray-400")} />
+                        <div className="min-w-0">
+                          <p className={cn("font-medium text-sm", isSelected && "text-pink-700")}>
+                            {method.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{method.description}</p>
+                          <p className={cn("text-xs font-semibold", method.cost === 0 ? "text-green-600" : "text-gray-700")}>
+                            {method.cost === 0 ? 'Gratis' : formatPrice(method.cost)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             <div>
@@ -566,9 +625,21 @@ export function ProductPurchaseDialog({ product }: ProductPurchaseDialogProps) {
             </div>
 
             {/* Total */}
-            <div className="flex items-center justify-between p-4 bg-pink-50 rounded-lg">
-              <span className="font-medium text-gray-700">Total Pembayaran</span>
-              <span className="text-xl font-bold text-pink-600">{formatPrice(totalPrice)}</span>
+            <div className="space-y-2 p-4 bg-pink-50 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="font-medium">{formatPrice(product.price * quantity)}</span>
+              </div>
+              {shippingCost > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Ongkos Kirim ({selectedShipping.name})</span>
+                  <span className="font-medium">{formatPrice(shippingCost)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-pink-200">
+                <span className="font-semibold text-gray-700">Total Pembayaran</span>
+                <span className="text-xl font-bold text-pink-600">{formatPrice(totalPrice)}</span>
+              </div>
             </div>
 
             {/* Submit Button */}

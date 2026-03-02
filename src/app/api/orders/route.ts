@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
         customer_address,
         notes,
         subtotal,
+        shipping_method,
+        shipping_cost,
         total_amount,
         status,
         payment_status,
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { customer_name, customer_phone, customer_address, notes, items, branch_id } = body
+    const { customer_name, customer_phone, customer_address, notes, items, branch_id, shipping_method, shipping_cost } = body
 
     if (!customer_name || !customer_phone || !items || items.length === 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -89,6 +91,10 @@ export async function POST(request: NextRequest) {
     for (const item of items) {
       subtotal += item.unit_price * item.quantity
     }
+    
+    // Add shipping cost to total
+    const shippingCostValue = shipping_cost || 0
+    const totalAmount = subtotal + shippingCostValue
 
     // Generate order number
     const today = new Date()
@@ -109,7 +115,9 @@ export async function POST(request: NextRequest) {
         customer_address,
         notes,
         subtotal,
-        total_amount: subtotal,
+        shipping_method: shipping_method || 'pickup',
+        shipping_cost: shippingCostValue,
+        total_amount: totalAmount,
         status: 'pending',
         payment_status: 'pending',
         branch_id
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
           order: { 
             order_number: orderNumber,
             customer_name,
-            total_amount: subtotal,
+            total_amount: totalAmount,
             status: 'pending'
           } 
         })
@@ -157,7 +165,7 @@ export async function POST(request: NextRequest) {
       await supabase.from('notifications').insert({
         type: 'new_order',
         title: 'Pesanan Baru',
-        message: `Pesanan ${orderNumber} dari ${customer_name} senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal)}`,
+        message: `Pesanan ${orderNumber} dari ${customer_name} senilai ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalAmount)}`,
         data: { order_id: order.id, order_number: orderNumber },
         branch_id
       })

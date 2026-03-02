@@ -33,7 +33,9 @@ import {
   Image as ImageIcon,
   ExternalLink,
   FileText,
-  Search
+  Search,
+  Truck,
+  Printer
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -55,6 +57,8 @@ interface Order {
   customer_address: string | null
   notes: string | null
   subtotal: number
+  shipping_method: string | null
+  shipping_cost: number | null
   total_amount: number
   status: 'pending' | 'confirmed' | 'processing' | 'completed' | 'cancelled'
   payment_status: 'pending' | 'paid' | 'refunded'
@@ -83,6 +87,16 @@ const paymentMethodConfig = {
   transfer: { label: 'Transfer Bank', icon: Building2 },
   qris: { label: 'QRIS', icon: QrCode },
   debit: { label: 'Kartu Debit', icon: CreditCard },
+}
+
+const shippingMethodConfig: Record<string, { label: string; icon: typeof Truck }> = {
+  pickup: { label: 'Ambil di Toka', icon: Package },
+  jne: { label: 'JNE', icon: Truck },
+  jnt: { label: 'J&T Express', icon: Truck },
+  sicepat: { label: 'SiCepat', icon: Truck },
+  pos: { label: 'POS Indonesia', icon: Truck },
+  gosend: { label: 'GoSend', icon: Truck },
+  grab: { label: 'Grab Express', icon: Truck },
 }
 
 export default function CashierOrdersPage() {
@@ -167,6 +181,154 @@ export default function CashierOrdersPage() {
     } catch {
       return ''
     }
+  }
+
+  const printShippingLabel = (order: Order) => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('Tidak dapat membuka jendela cetak. Pastikan pop-up diizinkan.')
+      return
+    }
+
+    const shippingLabel = shippingMethodConfig[order.shipping_method || ''] || { label: order.shipping_method }
+    const items = order.items || []
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Label Pengiriman - ${order.order_number}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            padding: 10mm;
+            background: white;
+          }
+          .label {
+            width: 100mm;
+            max-width: 100%;
+            margin: 0 auto;
+            border: 2px solid #000;
+            padding: 5mm;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+          }
+          .store-name {
+            font-size: 16px;
+            font-weight: bold;
+          }
+          .shipping-courier {
+            font-size: 18px;
+            font-weight: bold;
+            background: #f0f0f0;
+            padding: 5px;
+            text-align: center;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+          }
+          .section {
+            margin-bottom: 10px;
+          }
+          .section-title {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+          }
+          .section-content {
+            font-size: 12px;
+          }
+          .sender, .receiver {
+            border: 1px solid #ccc;
+            padding: 5px;
+            margin-bottom: 5px;
+          }
+          .receiver {
+            background: #f9f9f9;
+          }
+          .order-info {
+            font-size: 10px;
+            border-top: 1px dashed #ccc;
+            padding-top: 5px;
+            margin-top: 5px;
+          }
+          .items {
+            font-size: 9px;
+            color: #666;
+          }
+          .barcode {
+            text-align: center;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+          }
+          @media print {
+            body { padding: 0; }
+            .label { border: 2px solid #000; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <div class="header">
+            <div class="store-name">TOKO BONITA</div>
+            <div style="font-size: 10px;">Kecantikan & Perlengkapan Bayi</div>
+          </div>
+          
+          <div class="shipping-courier">
+            ${shippingLabel.label}
+          </div>
+          
+          <div class="sender section">
+            <div class="section-title">PENGIRIM:</div>
+            <div class="section-content">
+              <strong>Toko Bonita</strong><br>
+              Jl. Contoh Alamat No. 123<br>
+              Telp: 08123456789
+            </div>
+          </div>
+          
+          <div class="receiver section">
+            <div class="section-title">PENERIMA:</div>
+            <div class="section-content">
+              <strong>${order.customer_name}</strong><br>
+              ${order.customer_phone}<br>
+              ${order.customer_address || '-'}
+            </div>
+          </div>
+          
+          <div class="order-info">
+            <strong>No. Pesanan:</strong> ${order.order_number}<br>
+            <strong>Tanggal:</strong> ${new Date(order.created_at).toLocaleDateString('id-ID')}<br>
+            <strong>Item:</strong>
+            <div class="items">
+              ${items.map(item => `• ${item.product_name} (${item.quantity}x)`).join('<br>')}
+            </div>
+          </div>
+          
+          <div class="barcode">
+            ||| || ||| | || ||||| |||<br>
+            ${order.order_number}
+          </div>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+          }
+        </script>
+      </body>
+      </html>
+    `
+    
+    printWindow.document.write(html)
+    printWindow.document.close()
   }
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
@@ -341,6 +503,12 @@ export default function CashierOrdersPage() {
                                   <StatusIcon className="h-3 w-3 mr-1" />
                                   {status.label}
                                 </Badge>
+                                {order.shipping_method && order.shipping_method !== 'pickup' && (
+                                  <Badge variant="outline" className="text-xs border-blue-400 text-blue-600">
+                                    <Truck className="h-3 w-3 mr-1" />
+                                    {shippingMethodConfig[order.shipping_method]?.label || order.shipping_method}
+                                  </Badge>
+                                )}
                               </div>
                               
                               <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">
@@ -476,10 +644,10 @@ export default function CashierOrdersPage() {
 
       {/* Order Detail Dialog */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-pink-500" />
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5 text-pink-500 flex-shrink-0" />
               Detail Pesanan
             </DialogTitle>
             <DialogDescription className="flex items-center gap-1.5">
@@ -492,58 +660,81 @@ export default function CashierOrdersPage() {
           {selectedOrder && (
             <div className="space-y-4">
               {/* Customer Info */}
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                 <h4 className="font-semibold text-sm text-gray-500 mb-2">Info Pelanggan</h4>
-                <p className="font-medium">{selectedOrder.customer_name}</p>
-                <p className="text-sm text-gray-600">{selectedOrder.customer_phone}</p>
+                <p className="font-medium break-words">{selectedOrder.customer_name}</p>
+                <p className="text-sm text-gray-600 break-all">{selectedOrder.customer_phone}</p>
                 {selectedOrder.customer_address && (
-                  <p className="text-sm text-gray-600">{selectedOrder.customer_address}</p>
+                  <p className="text-sm text-gray-600 break-words mt-1">{selectedOrder.customer_address}</p>
                 )}
               </div>
 
               {/* Items */}
               <div>
                 <h4 className="font-semibold text-sm text-gray-500 mb-2">Item Pesanan</h4>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center py-2 border-b">
-                      <div>
-                        <p className="font-medium">{item.product_name}</p>
+                    <div key={idx} className="flex justify-between items-start py-2 border-b gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium break-words">{item.product_name}</p>
                         <p className="text-sm text-gray-500">
                           {item.quantity} x {formatPrice(item.unit_price)}
                         </p>
                       </div>
-                      <p className="font-semibold">{formatPrice(item.subtotal)}</p>
+                      <p className="font-semibold whitespace-nowrap">{formatPrice(item.subtotal)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Shipping Method */}
+              {selectedOrder.shipping_method && selectedOrder.shipping_method !== 'pickup' && (
+                <div className="flex justify-between items-center py-2 border-b gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Truck className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-500 truncate">Pengiriman ({shippingMethodConfig[selectedOrder.shipping_method]?.label || selectedOrder.shipping_method})</span>
+                  </div>
+                  <p className="font-semibold whitespace-nowrap">{formatPrice(selectedOrder.shipping_cost || 0)}</p>
+                </div>
+              )}
+
               {/* Total */}
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="font-semibold">Total</span>
-                <span className="text-xl font-bold text-pink-600">
-                  {formatPrice(selectedOrder.total_amount)}
-                </span>
+              <div className="space-y-1 pt-2 border-t">
+                <div className="flex justify-between items-center text-sm gap-2">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="whitespace-nowrap">{formatPrice(selectedOrder.subtotal)}</span>
+                </div>
+                {selectedOrder.shipping_cost && selectedOrder.shipping_cost > 0 && (
+                  <div className="flex justify-between items-center text-sm gap-2">
+                    <span className="text-gray-500">Ongkir</span>
+                    <span className="whitespace-nowrap">{formatPrice(selectedOrder.shipping_cost)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-lg sm:text-xl font-bold text-pink-600 whitespace-nowrap">
+                    {formatPrice(selectedOrder.total_amount)}
+                  </span>
+                </div>
               </div>
 
               {/* Notes */}
               {selectedOrder.notes && (
                 <div className="bg-yellow-50 rounded-lg p-3">
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 break-words">
                     <strong>Catatan:</strong> {selectedOrder.notes}
                   </p>
                 </div>
               )}
 
               {/* Status */}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <span className="text-sm text-gray-500">Status Pesanan</span>
                 <Badge className={`${statusConfig[selectedOrder.status].color} text-white`}>
                   {statusConfig[selectedOrder.status].label}
                 </Badge>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <span className="text-sm text-gray-500">Status Pembayaran</span>
                 <Badge variant="outline" className={`${selectedOrder.payment_status === 'paid' ? 'border-green-500 text-green-600' : 'border-orange-500 text-orange-600'}`}>
                   {paymentStatusConfig[selectedOrder.payment_status].label}
@@ -552,9 +743,9 @@ export default function CashierOrdersPage() {
 
               {/* Payment Method */}
               {selectedOrder.payment_method && (
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-2">
                   <span className="text-sm text-gray-500">Metode Pembayaran</span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {(() => {
                       const methodConfig = paymentMethodConfig[selectedOrder.payment_method!]
                       const MethodIcon = methodConfig?.icon || Wallet
@@ -562,6 +753,25 @@ export default function CashierOrdersPage() {
                         <>
                           <MethodIcon className="h-4 w-4 text-gray-500" />
                           <span className="text-sm font-medium">{methodConfig?.label || selectedOrder.payment_method}</span>
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Shipping Method */}
+              {selectedOrder.shipping_method && (
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm text-gray-500">Metode Pengiriman</span>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {(() => {
+                      const shippingConfig = shippingMethodConfig[selectedOrder.shipping_method]
+                      const ShippingIcon = shippingConfig?.icon || Truck
+                      return (
+                        <>
+                          <ShippingIcon className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">{shippingConfig?.label || selectedOrder.shipping_method}</span>
                         </>
                       )
                     })()}
@@ -577,7 +787,7 @@ export default function CashierOrdersPage() {
                     <img 
                       src={selectedOrder.payment_proof} 
                       alt="Bukti Pembayaran"
-                      className="w-full h-48 object-cover"
+                      className="w-full h-40 sm:h-48 object-cover"
                     />
                     <a
                       href={selectedOrder.payment_proof}
@@ -592,8 +802,22 @@ export default function CashierOrdersPage() {
               )}
 
               {/* Actions */}
+              {/* Print Shipping Label Button - Show for orders with shipping */}
+              {selectedOrder.shipping_method && selectedOrder.shipping_method !== 'pickup' && selectedOrder.customer_address && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full border-pink-500 text-pink-600 hover:bg-pink-50"
+                    onClick={() => printShippingLabel(selectedOrder)}
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Cetak Label Pengiriman
+                  </Button>
+                </div>
+              )}
+
               {selectedOrder.status === 'pending' && (
-                <div className="flex gap-2 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 pt-4">
                   <Button
                     className="flex-1 bg-green-500 hover:bg-green-600"
                     onClick={() => {
