@@ -561,40 +561,39 @@ export default function CashierPOSPage() {
       {/* Right Panel - Cart */}
       <div className="lg:w-1/3 flex flex-col">
         <Card className="flex-1 flex flex-col">
-          <div className="p-4 border-b">
+          <div className="p-2 border-b">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4" />
                 Keranjang
               </h2>
-              <Badge variant="secondary">{cart.length} item</Badge>
+              <Badge variant="secondary" className="text-xs">{cart.length} item</Badge>
             </div>
           </div>
           
           {/* Cart Items */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-2">
             {cart.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Keranjang kosong</p>
-                <p className="text-xs">Pilih produk untuk menambahkan</p>
+              <div className="text-center py-4 text-gray-500">
+                <ShoppingCart className="h-8 w-8 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">Keranjang kosong</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {cart.map(item => (
-                  <div key={item.product.id} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
+                  <div key={item.product.id} className="bg-gray-50 rounded-lg p-2">
+                    <div className="flex justify-between items-start mb-1">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{item.product.name}</p>
-                        <p className="text-xs text-gray-500">{formatCurrency(item.product.price)}</p>
+                        <p className="font-medium text-xs">{item.product.name}</p>
+                        <p className="text-[10px] text-gray-500">{formatCurrency(item.product.price)}</p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-red-500"
+                        className="h-5 w-5 text-red-500"
                         onClick={() => removeFromCart(item.product.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                     
@@ -603,22 +602,22 @@ export default function CashierPOSPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-6 w-6"
                           onClick={() => updateQuantity(item.product.id, -1)}
                         >
-                          <Minus className="h-3 w-3" />
+                          <Minus className="h-2 w-2" />
                         </Button>
-                        <span className="w-8 text-center font-medium">{item.qty}</span>
+                        <span className="w-6 text-center font-medium text-xs">{item.qty}</span>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-6 w-6"
                           onClick={() => updateQuantity(item.product.id, 1)}
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="h-2 w-2" />
                         </Button>
                       </div>
-                      <p className="font-bold text-pink-600">
+                      <p className="font-bold text-pink-600 text-xs">
                         {formatCurrency(calculateItemFinal(item))}
                       </p>
                     </div>
@@ -631,14 +630,14 @@ export default function CashierPOSPage() {
           <Separator />
 
           {/* Transaction Discount & Totals */}
-          <div className="p-4 space-y-3">
+          <div className="p-2 space-y-2">
             <div className="flex gap-2 items-center">
-              <Label className="text-sm whitespace-nowrap">Diskon Transaksi</Label>
+              <Label className="text-xs whitespace-nowrap">Diskon</Label>
               <Select
                 value={transactionDiscountType}
                 onValueChange={(v) => setTransactionDiscountType(v as DiscountType)}
               >
-                <SelectTrigger className="w-28">
+                <SelectTrigger className="w-24 h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -650,15 +649,15 @@ export default function CashierPOSPage() {
               {transactionDiscountType !== 'none' && (
                 <Input
                   type="number"
-                  className="flex-1"
+                  className="flex-1 h-8 text-xs"
                   value={transactionDiscountValue}
                   onChange={(e) => setTransactionDiscountValue(Number(e.target.value))}
-                  placeholder="Nilai diskon"
+                  placeholder="Nilai"
                 />
               )}
             </div>
 
-            <div className="space-y-1 text-sm">
+            <div className="space-y-1 text-xs">
               <div className="flex justify-between">
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
@@ -669,7 +668,7 @@ export default function CashierPOSPage() {
                   <span>-{formatCurrency(transactionDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold pt-2 border-t">
+              <div className="flex justify-between text-base font-bold pt-1 border-t">
                 <span>Total</span>
                 <span className="text-pink-600">{formatCurrency(finalAmount)}</span>
               </div>
@@ -677,7 +676,7 @@ export default function CashierPOSPage() {
 
             <Button
               className="w-full bg-gradient-to-r from-pink-500 to-purple-600"
-              size="lg"
+              size="sm"
               disabled={cart.length === 0 || loading}
               onClick={() => setShowPaymentDialog(true)}
             >
