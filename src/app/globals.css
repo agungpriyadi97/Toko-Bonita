@@ -127,20 +127,49 @@
     margin: 0;
   }
   
+  /* Reset body untuk print */
   body {
-    width: 58mm;
-    margin: 0;
-    padding: 0;
-    font-size: 10px;
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 10px !important;
+    background: white !important;
   }
   
-  .receipt-container {
-    width: 58mm;
-    padding: 2mm;
-  }
-  
+  /* Sembunyikan semua elemen dashboard */
+  .lg\:pl-64,
+  aside,
+  nav,
+  header,
+  .sidebar,
+  [class*="sidebar"],
+  [class*="Sidebar"],
+  [data-sidebar],
+  header[class*="Header"],
+  header[class*="header"],
   .no-print {
     display: none !important;
+  }
+  
+  /* Tampilkan hanya container receipt */
+  .receipt-container {
+    display: block !important;
+    width: 58mm !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+  
+  /* Sembunyikan semua selain receipt */
+  body > *:not(.receipt-page-wrapper) {
+    display: none !important;
+  }
+  
+  /* Pastikan main content tidak punya padding */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
 

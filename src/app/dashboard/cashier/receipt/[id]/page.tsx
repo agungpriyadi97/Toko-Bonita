@@ -51,11 +51,23 @@ export default async function ReceiptPage({
   const { data: transaction } = await supabase
     .from('transactions')
     .select(`
-      *,
+      id,
+      created_at,
+      subtotal_amount,
+      discount_amount,
+      final_amount,
+      payment_method,
+      change_amount,
       cashier:profiles!transactions_cashier_id_fkey(full_name),
       branch:branches(name, address),
-      items:transaction_items(*),
-      payments:transaction_payments(*)
+      items:transaction_items(
+        qty,
+        unit_price,
+        subtotal,
+        discount_amount,
+        product:products(name)
+      ),
+      payments:transaction_payments(method, amount)
     `)
     .eq('id', id)
     .single()
@@ -64,5 +76,17 @@ export default async function ReceiptPage({
     notFound()
   }
 
-  return <ReceiptView transaction={transaction as Transaction} />
+  // Transform items to flatten product name
+  const transformedTransaction = {
+    ...transaction,
+    items: (transaction.items || []).map((item: { qty: number; unit_price: number; subtotal: number; discount_amount: number; product?: { name: string } | null }) => ({
+      product_name: item.product?.name || 'Produk tidak dikenal',
+      qty: item.qty,
+      unit_price: item.unit_price,
+      subtotal: item.subtotal,
+      discount_amount: item.discount_amount
+    }))
+  }
+
+  return <ReceiptView transaction={transformedTransaction as Transaction} />
 }

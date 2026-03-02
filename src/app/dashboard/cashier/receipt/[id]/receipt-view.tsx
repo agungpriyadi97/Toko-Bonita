@@ -63,9 +63,9 @@ export default function ReceiptView({ transaction }: ReceiptViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="receipt-page-wrapper min-h-screen bg-gray-100 p-4">
       {/* Controls - Hidden on print */}
-      <div className="no-print mb-4 flex items-center gap-4">
+      <div className="no-print mb-4 flex items-center gap-4 print:hidden">
         <Link href="/dashboard/cashier/transactions">
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -79,11 +79,11 @@ export default function ReceiptView({ transaction }: ReceiptViewProps) {
       </div>
 
       {/* Receipt - 58mm width */}
-      <div className="receipt-container bg-white mx-auto p-4 font-mono text-xs" style={{ width: '58mm' }}>
+      <div className="receipt-container bg-white mx-auto p-4 font-mono text-xs shadow-lg">
         {/* Header */}
         <div className="text-center mb-3">
           <div className="font-bold text-sm">{transaction.branch?.name || 'Toko Bonita'}</div>
-          <div className="text-[10px]">{transaction.branch?.address}</div>
+          <div className="text-[10px]">{transaction.branch?.address || ''}</div>
         </div>
 
         <div className="border-t border-dashed border-gray-400 my-2"></div>
@@ -168,25 +168,34 @@ export default function ReceiptView({ transaction }: ReceiptViewProps) {
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: 58mm auto;
-            margin: 0;
+          /* Hide everything except receipt */
+          body {
+            background: white !important;
           }
           
-          body {
-            width: 58mm;
-            margin: 0;
-            padding: 0;
-            font-size: 10px;
+          /* Hide dashboard elements */
+          aside,
+          nav,
+          header,
+          .sidebar,
+          [class*="Sidebar"],
+          [class*="Header"],
+          .no-print,
+          .lg\:pl-64 {
+            display: none !important;
+          }
+          
+          /* Receipt container styles for print */
+          .receipt-page-wrapper {
+            padding: 0 !important;
+            background: white !important;
           }
           
           .receipt-container {
-            width: 58mm;
-            padding: 2mm;
-          }
-          
-          .no-print {
-            display: none !important;
+            width: 58mm !important;
+            padding: 2mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
           }
         }
       `}</style>
