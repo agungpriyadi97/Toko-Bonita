@@ -1,0 +1,20 @@
+column_name,data_type
+id,uuid
+cashier_id,uuid
+branch_id,uuid
+warehouse_id,uuid
+subtotal_amount,numeric
+discount_type,USER-DEFINED
+discount_value,numeric
+discount_amount,numeric
+final_amount,numeric
+payment_method,USER-DEFINED
+payment_status,USER-DEFINED
+cash_received,numeric
+change_amount,numeric
+notes,text
+created_at,timestamp with time zone
+paid_at,timestamp with time zone
+paid_by,uuid
+status_updated_at,timestamp with time zone
+transaction_number,text

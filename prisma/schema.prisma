@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  fullName   String?
+  role      String   @default("cashier") // "admin" | "cashier"
+  branchId  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  transactions Transaction[]
+
+  @@map("profiles")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  barcode     String?  @unique
+  sku         String?  @unique
+  description String?
+  price       Float
+  costPrice   Float?
+  categoryId  String?
+  imageUrl    String?
+  unit        String   @default("pcs")
+  minStock    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category       Category?        @relation(fields: [categoryId], references: [id])
+  stocks         ProductStock[]
+  transactionItems TransactionItem[]
+  stockMovements StockMovement[]
+
+  @@index([barcode])
+  @@index([sku])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profiles   Profile[]
+  warehouses Warehouse[]
+  transactions Transaction[]
+
+  @@map("branches")
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String
+  branchId  String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  productStocks ProductStock[]
+  transactions  Transaction[]
+  stockMovements StockMovement[]
+
+  @@map("warehouses")
+}
+
+model ProductStock {
+  id          String   @id @default(cuid())
+  productId   String
+  warehouseId String
+  quantity    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId])
+  @@map("product_stocks")
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  cashierId     String
+  branchId      String
+  warehouseId   String
+  subtotal      Float
+  discountType  String   @default("none") // "percent" | "amount" | "none"
+  discountValue Float    @default(0)
+  discountAmount Float   @default(0)
+  taxAmount     Float    @default(0)
+  totalAmount   Float
+  finalAmount   Float
+  status        String   @default("completed") // "completed" | "pending" | "cancelled"
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  cashier   Profile    @relation(fields: [cashierId], references: [id])
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  warehouse Warehouse  @relation(fields: [warehouseId], references: [id])
+  items     TransactionItem[]
+  payments  TransactionPayment[]
+
+  @@index([cashierId])
+  @@index([branchId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id             String   @id @default(cuid())
+  transactionId  String
+  productId      String
+  productName    String
+  productBarcode String?
+  productSku     String?
+  quantity       Int
+  unitPrice      Float
+  discountType   String   @default("none") // "percent" | "amount" | "none"
+  discountValue  Float    @default(0)
+  discountAmount Float    @default(0)
+  totalPrice     Float
+  createdAt      DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@index([transactionId])
+  @@index([productId])
+  @@map("transaction_items")
+}
+
+model TransactionPayment {
+  id              String   @id @default(cuid())
+  transactionId   String
+  paymentMethod   String   // "cash" | "qris" | "transfer" | "debit"
+  amount          Float
+  status          String   @default("paid") // "paid" | "pending"
+  referenceNumber String?
+  createdAt       DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("transaction_payments")
+}
+
+model StockMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  warehouseId   String
+  type          String   // "in" | "out" | "transfer_in" | "transfer_out" | "adjustment"
+  quantity      Int
+  referenceType String?  // "transaction" | "transfer" | "adjustment"
+  referenceId   String?
+  notes         String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  response  String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("idempotency_keys")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
