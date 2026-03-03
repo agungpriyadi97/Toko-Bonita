@@ -144,6 +144,23 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
     }
   }
 
+  const checkDuplicate = async (field: string, value: string): Promise<boolean> => {
+    if (!value.trim()) return false
+    
+    let query = supabase
+      .from('products')
+      .select('id')
+      .eq(field, value.trim())
+    
+    // Exclude current product when editing
+    if (product) {
+      query = query.neq('id', product.id)
+    }
+    
+    const { data } = await query.maybeSingle()
+    return !!data
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -155,55 +172,118 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
     setLoading(true)
 
     try {
+      // Check for duplicates
+      const duplicateErrors: string[] = []
+      
+      // Check name duplicate
+      if (await checkDuplicate('name', formData.name)) {
+        duplicateErrors.push(`Nama produk "${formData.name}" sudah ada`)
+      }
+      
+      // Check barcode duplicate (only if filled)
+      if (formData.barcode && await checkDuplicate('barcode', formData.barcode)) {
+        duplicateErrors.push(`Barcode "${formData.barcode}" sudah digunakan`)
+      }
+      
+      // Check SKU duplicate (only if filled)
+      if (formData.sku && await checkDuplicate('sku', formData.sku)) {
+        duplicateErrors.push(`SKU "${formData.sku}" sudah digunakan`)
+      }
+
+      // Show duplicate errors and stop
+      if (duplicateErrors.length > 0) {
+        toast.error(
+          <div className="space-y-1">
+            <p className="font-semibold">Data sudah ada:</p>
+            {duplicateErrors.map((err, i) => (
+              <p key={i}>• {err}</p>
+            ))}
+          </div>,
+          { duration: 5000 }
+        )
+        setLoading(false)
+        return
+      }
+
       const slug = generateSlug(formData.name)
       const price = parseFloat(formData.price) || 0
 
+      // Build product data - only include image_url if it has value
+      const productData: Record<string, any> = {
+        name: formData.name,
+        slug,
+        category_id: formData.category_id || null,
+        barcode: formData.barcode || null,
+        sku: formData.sku || null,
+        price,
+        description: formData.description || null,
+        is_active: formData.is_active,
+      }
+
+      // Only add image_url if it's not empty
+      if (formData.image_url) {
+        productData.image_url = formData.image_url
+      }
+
       if (product) {
         // Update existing product
+        productData.updated_at = new Date().toISOString()
         const { error } = await supabase
           .from('products')
-          .update({
-            name: formData.name,
-            slug,
-            category_id: formData.category_id || null,
-            barcode: formData.barcode || null,
-            sku: formData.sku || null,
-            price,
-            description: formData.description || null,
-            is_active: formData.is_active,
-            image_url: formData.image_url || null,
-            updated_at: new Date().toISOString()
-          })
+          .update(productData)
           .eq('id', product.id)
 
-        if (error) throw error
-        toast.success('Produk berhasil diperbarui')
+        if (error) {
+          console.error('Update error:', error)
+          // Handle duplicate key error from database
+          if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
+            toast.error('Data sudah ada: nama, barcode, atau SKU sudah digunakan produk lain')
+          } else if (error.message && error.message.includes('image_url')) {
+            delete productData.image_url
+            const { error: retryError } = await supabase
+              .from('products')
+              .update(productData)
+              .eq('id', product.id)
+            if (retryError) throw retryError
+            toast.success('Produk berhasil diperbarui (tanpa gambar)')
+          } else {
+            throw error
+          }
+        } else {
+          toast.success('Produk berhasil diperbarui')
+        }
       } else {
         // Create new product
+        productData.in_stock = true
         const { error } = await supabase
           .from('products')
-          .insert({
-            name: formData.name,
-            slug,
-            category_id: formData.category_id || null,
-            barcode: formData.barcode || null,
-            sku: formData.sku || null,
-            price,
-            description: formData.description || null,
-            is_active: formData.is_active,
-            image_url: formData.image_url || null,
-            in_stock: true
-          })
+          .insert(productData)
 
-        if (error) throw error
-        toast.success('Produk berhasil ditambahkan')
+        if (error) {
+          console.error('Insert error:', error)
+          // Handle duplicate key error from database
+          if (error.code === '23505' || error.message.includes('duplicate') || error.message.includes('unique')) {
+            toast.error('Data sudah ada: nama, barcode, atau SKU sudah digunakan produk lain')
+          } else if (error.message && error.message.includes('image_url')) {
+            delete productData.image_url
+            const { error: retryError } = await supabase
+              .from('products')
+              .insert(productData)
+            if (retryError) throw retryError
+            toast.success('Produk berhasil ditambahkan (tanpa gambar)')
+          } else {
+            throw error
+          }
+        } else {
+          toast.success('Produk berhasil ditambahkan')
+        }
       }
 
       onSuccess()
       onOpenChange(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error)
-      toast.error('Gagal menyimpan produk')
+      toast.error(error?.message || 'Gagal menyimpan produk')
     } finally {
       setLoading(false)
     }
