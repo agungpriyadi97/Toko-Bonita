@@ -6,12 +6,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// POST - Upload payment proof image
+// POST - Upload image (payment proof or product image)
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const orderId = formData.get('orderId') as string
+    const productId = formData.get('productId') as string
+    const type = formData.get('type') as string || 'payment-proof'
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
@@ -32,7 +34,15 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(7)
     const ext = file.name.split('.').pop()
-    const fileName = `payment-proof/${orderId}/${timestamp}-${randomStr}.${ext}`
+
+    let fileName: string
+    if (type === 'product' && productId) {
+      fileName = `products/${productId}/${timestamp}-${randomStr}.${ext}`
+    } else if (orderId) {
+      fileName = `payment-proof/${orderId}/${timestamp}-${randomStr}.${ext}`
+    } else {
+      fileName = `uploads/${timestamp}-${randomStr}.${ext}`
+    }
 
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase
@@ -45,16 +55,24 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
-      
-      // If storage bucket doesn't exist, store as base64 in order
+
+      // If storage bucket doesn't exist, store as base64
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
       const base64 = `data:${file.type};base64,${buffer.toString('base64')}`
-      
+
+      if (type === 'product' && productId) {
+        return NextResponse.json({
+          success: true,
+          imageUrl: base64,
+          message: 'Gambar produk berhasil diupload'
+        })
+      }
+
       // Update order with payment proof
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ 
+        .update({
           payment_proof: base64,
           payment_status: 'paid'
         })
@@ -64,8 +82,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: updateError.message }, { status: 500 })
       }
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         paymentProof: base64,
         message: 'Bukti pembayaran berhasil diupload'
       })
@@ -79,23 +97,32 @@ export async function POST(request: NextRequest) {
 
     const publicUrl = urlData.publicUrl
 
-    // Update order with payment proof URL
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ 
-        payment_proof: publicUrl,
-        payment_status: 'paid'
-      })
-      .eq('id', orderId)
+    // Update order with payment proof URL (if order upload)
+    if (type !== 'product' && orderId) {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({
+          payment_proof: publicUrl,
+          payment_status: 'paid'
+        })
+        .eq('id', orderId)
 
-    if (updateError) {
-      console.error('Update order error:', updateError)
+      if (updateError) {
+        console.error('Update order error:', updateError)
+      }
+
+      return NextResponse.json({
+        success: true,
+        paymentProof: publicUrl,
+        message: 'Bukti pembayaran berhasil diupload'
+      })
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      paymentProof: publicUrl,
-      message: 'Bukti pembayaran berhasil diupload'
+    // Return product image URL
+    return NextResponse.json({
+      success: true,
+      imageUrl: publicUrl,
+      message: 'Gambar berhasil diupload'
     })
 
   } catch (error) {
